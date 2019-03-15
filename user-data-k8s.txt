@@ -1,0 +1,17 @@
+#!/bin/bash
+
+apt-get update && apt-get -y install docker.io apt-transport-https
+systemctl enable docker.service
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+apt-get update -y
+apt-get install -y kubelet kubeadm
+kubeadm init --pod-network-cidr=10.244.0.0/16
+sleep 60
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+export kubever=$(kubectl version | base64 | tr -d '\n')
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+master=$(kubectl get nodes -o wide| grep master|awk '{print $1}')
+kubectl taint nodes $master node-role.kubernetes.io/master:NoSchedule-
